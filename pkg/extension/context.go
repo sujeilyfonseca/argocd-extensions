@@ -4,12 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 	"io"
 	"io/fs"
+	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sort"
 
 	k8slog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,6 +25,7 @@ import (
 )
 
 type extensionContext struct {
+	client.Client
 	name         string
 	outputPath   string
 	snapshotPath string
@@ -59,8 +65,9 @@ func (s sourcesSnapshot) deleteFiles() error {
 	return nil
 }
 
-func NewExtensionContext(extension *extensionv1.ArgoCDExtension, outputPath string) *extensionContext {
+func NewExtensionContext(extension *extensionv1.ArgoCDExtension, client client.Client, outputPath string) *extensionContext {
 	return &extensionContext{
+		Client:       client,
 		name:         extension.Name,
 		sources:      extension.Spec.Sources,
 		outputPath:   outputPath,
@@ -68,11 +75,20 @@ func NewExtensionContext(extension *extensionv1.ArgoCDExtension, outputPath stri
 	}
 }
 
+func (c *extensionContext) GetSecret(ctx context.Context, key extensionv1.NamespacedName) (v1.Secret, error) {
+	var secret v1.Secret
+	err := c.Get(ctx, types.NamespacedName{
+		Namespace: key.Namespace,
+		Name:      key.Name,
+	}, &secret)
+	return secret, err
+}
+
 // Process downloads extension files
 func (c *extensionContext) Process(ctx context.Context) error {
 	log := k8slog.FromContext(ctx)
 
-	revisions, err := c.resolveRevisions()
+	revisions, err := c.resolveRevisions(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to resolve sources revisions: %v", err)
 	}
@@ -201,12 +217,19 @@ func (c *extensionContext) downloadTo(out string) error {
 	return nil
 }
 
-func (c *extensionContext) resolveRevisions() ([]string, error) {
+func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, error) {
 	var res []string
 	for _, s := range c.sources {
 		switch {
 		case s.Git != nil:
-			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision)
+			secret, err := c.GetSecret(ctx, *s.Git.Secret)
+			username := string(secret.Data["username"])
+			password := string(secret.Data["password"])
+			auth := http.BasicAuth{
+				Username: username,
+				Password: password,
+			}
+			sha, err := git.LsRemote(s.Git.Url, s.Git.Revision, &auth)
 			if err != nil {
 				return nil, err
 			}

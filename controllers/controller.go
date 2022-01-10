@@ -41,7 +41,7 @@ func (r *ArgoCDExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	ext := original.DeepCopy()
 
-	extensionCtx := extension.NewExtensionContext(ext, r.ExtensionsPath)
+	extensionCtx := extension.NewExtensionContext(ext, r.Client, r.ExtensionsPath)
 
 	if index := findIndex(ext.Finalizers, finalizerName); index > -1 && ext.DeletionTimestamp != nil {
 		if err := extensionCtx.ProcessDeletion(); err != nil {

@@ -50,6 +50,22 @@ spec:
                           description: Revision specifies the revision of the Repository
                             to fetch
                           type: string
+                        secret:
+                          description: Secret specifies the Kubernetes secret to use
+                            when authenticating with GitHub
+                          properties:
+                            name:
+                              description: Name specifies the name of the Kubernetes
+                                resource
+                              type: string
+                            namespace:
+                              description: Namespace specifies the namespace of the
+                                Kubernetes resource
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
                         url:
                           description: URL specifies the Git repository URL to fetch
                           type: string

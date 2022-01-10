@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 	"regexp"
 
 	"gopkg.in/src-d/go-git.v4"
@@ -26,7 +27,7 @@ func IsTruncatedCommitSHA(sha string) bool {
 }
 
 // LsRemote resolves commit sha for given Git repo and revision
-func LsRemote(repoURL string, revision string) (string, error) {
+func LsRemote(repoURL string, revision string, auth *http.BasicAuth) (string, error) {
 	if IsCommitSHA(revision) || IsTruncatedCommitSHA(revision) {
 		return revision, nil
 	}
@@ -42,7 +43,9 @@ func LsRemote(repoURL string, revision string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	refs, err := remote.List(&git.ListOptions{})
+	refs, err := remote.List(&git.ListOptions{
+		Auth: auth,
+	})
 
 	if err != nil {
 		return "", err
