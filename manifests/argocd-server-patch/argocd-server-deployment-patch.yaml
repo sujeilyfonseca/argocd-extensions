@@ -11,7 +11,7 @@ spec:
             - name: extensions
               mountPath: /tmp/extensions/
         - name: argocd-extensions
-          image: ghcr.io/argoproj-labs/argocd-extensions:latest
+          image: 530235354076.dkr.ecr.us-east-1.amazonaws.com/apaas_dev/argocd-extensions:latest
           volumeMounts:
             - name: extensions
               mountPath: /tmp/extensions/
