@@ -3,12 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"reflect"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	extensionv1 "github.com/argoproj/argocd-extensions/api/v1alpha1"
 	"github.com/argoproj/argocd-extensions/pkg/extension"
@@ -25,15 +25,6 @@ type ArgoCDExtensionReconciler struct {
 	ExtensionsPath string
 }
 
-func findIndex(in []string, item string) int {
-	for i := range in {
-		if in[i] == item {
-			return i
-		}
-	}
-	return -1
-}
-
 func (r *ArgoCDExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var original extensionv1.ArgoCDExtension
 	if err := r.Get(ctx, req.NamespacedName, &original); err != nil {
@@ -43,13 +34,28 @@ func (r *ArgoCDExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	extensionCtx := extension.NewExtensionContext(ext, r.Client, r.ExtensionsPath)
 
-	if index := findIndex(ext.Finalizers, finalizerName); index > -1 && ext.DeletionTimestamp != nil {
-		if err := extensionCtx.ProcessDeletion(); err != nil {
+	isMarkedForDeletion := ext.GetDeletionTimestamp() != nil
+	if isMarkedForDeletion {
+		if controllerutil.ContainsFinalizer(ext, finalizerName) {
+			if err := extensionCtx.ProcessDeletion(ctx); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(ext, finalizerName)
+			err := r.Client.Update(ctx, ext)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Add finalizer for this CR
+	if !controllerutil.ContainsFinalizer(ext, finalizerName) {
+		controllerutil.AddFinalizer(ext, finalizerName)
+		err := r.Update(ctx, ext)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
-		ext.Finalizers = append(ext.Finalizers[:index], ext.Finalizers[index+1:]...)
-		err := r.Client.Update(ctx, ext)
-		return ctrl.Result{}, err
 	}
 
 	readyCondition := extensionv1.ArgoCDExtensionCondition{Type: extensionv1.ConditionReady}
