@@ -29,6 +29,11 @@ is entirely owned by the ArgoCD Extensions operator and will be regenerated when
 download of an ArgoCD Extension, the resource customizations will be read in from the file system and then placed into
 this ConfigMap.
 
+### Configurable Base Directory
+
+The default base directory for a GitHub repo is `resources`. In order to be more flexible and allow for different 
+repository structures, this can now be set in the `ArgoCDExtension` CR as `spec.baseDirectory`.
+
 ### Finalizer
 
 Adds handling for the deletion of an `ArgoCDExtension` CR.

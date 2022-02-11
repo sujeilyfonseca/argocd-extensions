@@ -44,7 +44,7 @@ type extensionContext struct {
 	outputPath      string
 	snapshotPath    string
 	fileTrackerPath string
-	sources         []extensionv1.ExtensionSource
+	extension       *extensionv1.ArgoCDExtension
 }
 
 type sourcesSnapshot struct {
@@ -88,7 +88,7 @@ func NewExtensionContext(extension *extensionv1.ArgoCDExtension, client client.C
 	return &extensionContext{
 		Client:          client,
 		name:            extensionName(extension.Name),
-		sources:         extension.Spec.Sources,
+		extension:       extension,
 		outputPath:      outputPath,
 		snapshotPath:    path.Join(outputPath, fmt.Sprintf(".%s.snapshot", extension.Name)),
 		fileTrackerPath: path.Join(outputPath, fileTrackerFileName),
@@ -415,7 +415,7 @@ func (c *extensionContext) deleteSnapshot() error {
 }
 
 func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
-	for _, s := range c.sources {
+	for _, s := range c.extension.Spec.Sources {
 		switch {
 		case s.Git != nil:
 			parsedUrl, err := url.Parse(s.Git.Url)
@@ -423,15 +423,19 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 				return err
 			}
 			var gitURL string
+			baseDir := "resources"
+			if c.extension.Spec.BaseDirectory != "" {
+				baseDir = c.extension.Spec.BaseDirectory
+			}
 			if strings.HasPrefix(s.Git.Url, "ssh://") {
 				secret, err := c.GetSecret(ctx, *s.Git.Secret)
 				if err != nil {
 					return err
 				}
 				sshKey := base64.StdEncoding.EncodeToString(secret.Data["sshkey"])
-				gitURL = fmt.Sprintf("git::ssh://git@%s%s//resources?ref=%s&sshkey=%s", parsedUrl.Host, parsedUrl.Path, s.Git.Revision, sshKey)
+				gitURL = fmt.Sprintf("git::ssh://git@%s%s//%s?ref=%s&sshkey=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision, sshKey)
 			} else {
-				gitURL = fmt.Sprintf("git::%s%s//resources?ref=%s", parsedUrl.Host, parsedUrl.Path, s.Git.Revision)
+				gitURL = fmt.Sprintf("git::%s%s//%s?ref=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision)
 			}
 			if err := getter.Get(filepath.Join(out, "resources"), gitURL); err != nil {
 				return err
@@ -447,7 +451,7 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 
 func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, error) {
 	var res []string
-	for _, s := range c.sources {
+	for _, s := range c.extension.Spec.Sources {
 		switch {
 		case s.Git != nil:
 			secret, err := c.GetSecret(ctx, *s.Git.Secret)

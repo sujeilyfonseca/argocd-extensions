@@ -8,6 +8,8 @@ import (
 type ArgoCDExtensionSpec struct {
 	// Sources specifies where the extension should come from
 	Sources []ExtensionSource `json:"sources"`
+	// BaseDirectory specifies the directory that all resource customizations are stored under
+	BaseDirectory string `json:"baseDirectory"`
 }
 
 type ArgoCDExtensionConditionType string
