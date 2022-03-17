@@ -99,7 +99,7 @@ func (c *extensionContext) buildResourceOverrideConfigMap(resourceOverrides map[
 	configMap := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceOverrideConfigMap,
-			Namespace: "argocd",
+			Namespace: c.extension.Namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/part-of": "argocd",
 			},
@@ -459,6 +459,9 @@ func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, erro
 		switch {
 		case s.Git != nil:
 			secret, err := c.GetSecret(ctx, *s.Git.Secret)
+			if err != nil {
+				return nil, err
+			}
 			publicKey, err := ssh.NewPublicKeys("git", secret.Data["sshkey"], "")
 			if err != nil {
 				return nil, err
