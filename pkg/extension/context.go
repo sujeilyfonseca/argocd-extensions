@@ -411,7 +411,11 @@ func (c *extensionContext) loadSnapshot() sourcesSnapshot {
 }
 
 func (c *extensionContext) deleteSnapshot() error {
-	return os.Remove(c.snapshotPath)
+	err := os.Remove(c.snapshotPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
