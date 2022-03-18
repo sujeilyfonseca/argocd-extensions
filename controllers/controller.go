@@ -19,6 +19,10 @@ const (
 	finalizerName = "extensions-finalizer.argocd.argoproj.io"
 )
 
+var (
+	controllerLog = ctrl.Log.WithName("controller")
+)
+
 // ArgoCDExtensionReconciler reconciles a ArgoCDExtension object
 type ArgoCDExtensionReconciler struct {
 	client.Client
@@ -33,19 +37,25 @@ func (r *ArgoCDExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	ext := original.DeepCopy()
 
+	extensionLog := controllerLog.WithValues("extensionName", ext.Name)
 	extensionCtx := extension.NewExtensionContext(ext, r.Client, r.ExtensionsPath)
 
 	isMarkedForDeletion := ext.GetDeletionTimestamp() != nil
 	if isMarkedForDeletion {
 		if controllerutil.ContainsFinalizer(ext, finalizerName) {
+			extensionLog.Info("processing deletion...")
 			if err := extensionCtx.ProcessDeletion(ctx); err != nil {
+				extensionLog.Error(err, "failed to process deletion")
 				return ctrl.Result{}, err
 			}
+			extensionLog.Info("removing finalizer...")
 			controllerutil.RemoveFinalizer(ext, finalizerName)
 			err := r.Client.Update(ctx, ext)
 			if err != nil {
+				extensionLog.Error(err, "failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
+			extensionLog.Info("removed finalizer")
 		}
 		return ctrl.Result{}, nil
 	}
@@ -55,17 +65,22 @@ func (r *ArgoCDExtensionReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		controllerutil.AddFinalizer(ext, finalizerName)
 		err := r.Update(ctx, ext)
 		if err != nil {
+			extensionLog.Error(err, "failed to add finalizer")
 			return ctrl.Result{}, err
 		}
+		extensionLog.Info("added finalizer")
 	}
 
 	readyCondition := extensionv1.ArgoCDExtensionCondition{Type: extensionv1.ConditionReady}
+	extensionLog.Info("processing...")
 	if err := extensionCtx.Process(ctx); err != nil {
 		readyCondition.Status = metav1.ConditionFalse
 		readyCondition.Message = err.Error()
+		extensionLog.Error(err, "failed to process")
 	} else {
 		readyCondition.Status = metav1.ConditionTrue
 		readyCondition.Message = fmt.Sprintf("Successfully processed %d extension sources", len(original.Spec.Sources))
+		extensionLog.Info("successfully processed", "sourceCount", len(original.Spec.Sources))
 	}
 	ext.Status.Conditions = []extensionv1.ArgoCDExtensionCondition{readyCondition}
 	if !reflect.DeepEqual(ext.Status, original.Status) {
