@@ -83,3 +83,14 @@ GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+
+# Build the docker image
+.PHONY: docker-build
+docker-build:
+	docker build -t ${IMG} .
+
+# Push the docker image
+.PHONY: docker-push
+docker-push:
+	docker push ${IMG} 

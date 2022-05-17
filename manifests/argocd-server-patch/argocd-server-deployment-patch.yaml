@@ -11,7 +11,7 @@ spec:
             - name: extensions
               mountPath: /tmp/extensions/
         - name: argocd-extensions
-          image: icr.io/automation-saas-platform/cicd/argocd-extensions@sha256:f530d03a6683ecbca1ac6650470fd04f144c54dc47d45fe08511e0aaaed1d133
+          image: icr.io/automation-saas-platform/cicd/argocd-extensions:latest
           volumeMounts:
             - name: extensions
               mountPath: /tmp/extensions/
