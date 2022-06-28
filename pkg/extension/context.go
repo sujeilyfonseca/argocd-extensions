@@ -270,7 +270,7 @@ func getResourceOverrideForResourceDirectory(basePath, groupDirName string, reso
 	healthLua := path.Join(dirPath, "health.lua")
 
 	healthScript := ""
-	rawScript, err := os.ReadFile(healthLua)
+	rawScript, err := os.ReadFile(filepath.Clean(healthLua))
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func (c *extensionContext) moveSourceFiles(tracker *fileTracker, revisions []str
 			return err
 		}
 		targetPath := filepath.Join(c.outputPath, relPath)
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return err
 		}
 		if err := moveFile(path, targetPath); err != nil {
@@ -397,7 +397,7 @@ func (c *extensionContext) saveSnapshot(snapshot sourcesSnapshot) error {
 		return err
 	}
 
-	if err := os.WriteFile(c.snapshotPath, data, 0755); err != nil {
+	if err := ioutil.WriteFile(c.snapshotPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to persist download sources revisions: %v", err)
 	}
 	return nil
@@ -483,7 +483,7 @@ func (c *extensionContext) resolveRevisions(ctx context.Context) ([]string, erro
 }
 
 func moveFile(src string, dst string) error {
-	input, err := os.Open(src)
+	input, err := os.Open(filepath.Clean(src))
 	if err != nil {
 		return err
 	}
@@ -492,7 +492,11 @@ func moveFile(src string, dst string) error {
 		_ = input.Close()
 		return err
 	}
-	defer output.Close()
+	defer func() {
+		if err := output.Close(); err != nil {
+			// Log error not needed
+		}
+	}()
 	_, err = io.Copy(output, input)
 	_ = input.Close()
 	if err != nil {
