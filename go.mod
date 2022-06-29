@@ -3,13 +3,13 @@ module github.com/argoproj/argocd-extensions
 go 1.19
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.3.3
+	github.com/argoproj/argo-cd/v2 v2.4.3
 	github.com/ghodss/yaml v1.0.0
-	github.com/hashicorp/go-getter v1.5.8
+	github.com/hashicorp/go-getter v1.6.2
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	k8s.io/api v0.23.1
-	k8s.io/apimachinery v0.23.1
-	k8s.io/client-go v0.23.1
+	k8s.io/api v0.23.3
+	k8s.io/apimachinery v0.23.3
+	k8s.io/client-go v0.23.3
 	sigs.k8s.io/controller-runtime v0.11.0
 )
 
