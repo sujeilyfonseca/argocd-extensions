@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	//"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/ghodss/yaml"
 	"github.com/hashicorp/go-getter"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
@@ -96,7 +96,7 @@ func NewExtensionContext(extension *extensionv1.ArgoCDExtension, client client.C
 	}
 }
 
-func (c *extensionContext) buildResourceOverrideConfigMap(resourceOverrides map[string]*v1alpha1.ResourceOverride) (*v1.ConfigMap, error) {
+func (c *extensionContext) buildResourceOverrideConfigMap(resourceOverrides map[string]*extensionv1.ResourceOverride) (*v1.ConfigMap, error) {
 	configMap := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ResourceOverrideConfigMap,
@@ -265,7 +265,7 @@ func (c *extensionContext) ProcessDeletion(ctx context.Context) error {
 	return c.deleteSnapshot()
 }
 
-func getResourceOverrideForResourceDirectory(basePath, groupDirName string, resourceDirName string) (*v1alpha1.ResourceOverride, error) {
+func getResourceOverrideForResourceDirectory(basePath, groupDirName string, resourceDirName string) (*extensionv1.ResourceOverride, error) {
 	dirPath := path.Join(basePath, ResourcesDir, groupDirName, resourceDirName)
 	healthLua := path.Join(dirPath, "health.lua")
 
@@ -278,19 +278,19 @@ func getResourceOverrideForResourceDirectory(basePath, groupDirName string, reso
 		healthScript = string(rawScript)
 	}
 
-	return &v1alpha1.ResourceOverride{
+	return &extensionv1.ResourceOverride{
 		HealthLua: healthScript,
 	}, nil
 }
 
-func getResourceOverridesForGroupDirectory(basePath string, groupDirName string) (map[string]*v1alpha1.ResourceOverride, error) {
+func getResourceOverridesForGroupDirectory(basePath string, groupDirName string) (map[string]*extensionv1.ResourceOverride, error) {
 	dirPath := path.Join(basePath, ResourcesDir, groupDirName)
 	resourceDirs, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}
 
-	resourceOverrideMap := make(map[string]*v1alpha1.ResourceOverride)
+	resourceOverrideMap := make(map[string]*extensionv1.ResourceOverride)
 	for _, resourceDir := range resourceDirs {
 		if !resourceDir.IsDir() {
 			return nil, errors.New(fmt.Sprintf("extension path \"%s\" is not a directory", dirPath))
@@ -308,17 +308,17 @@ func getResourceOverridesForGroupDirectory(basePath string, groupDirName string)
 	return resourceOverrideMap, nil
 }
 
-func (c *extensionContext) getExtensionResourceOverrides() (map[string]*v1alpha1.ResourceOverride, error) {
+func (c *extensionContext) getExtensionResourceOverrides() (map[string]*extensionv1.ResourceOverride, error) {
 	resourcesPath := path.Join(c.outputPath, ResourcesDir)
 	groupDirs, err := os.ReadDir(resourcesPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]*v1alpha1.ResourceOverride), nil
+			return make(map[string]*extensionv1.ResourceOverride), nil
 		}
 		return nil, err
 	}
 
-	resourceOverrideMap := make(map[string]*v1alpha1.ResourceOverride)
+	resourceOverrideMap := make(map[string]*extensionv1.ResourceOverride)
 	for _, groupDir := range groupDirs {
 		if !groupDir.IsDir() {
 			return nil, errors.New(fmt.Sprintf("extension resource group \"%s\" is not a directory", groupDir.Name()))
