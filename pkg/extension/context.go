@@ -91,8 +91,8 @@ func NewExtensionContext(extension *extensionv1.ArgoCDExtension, client client.C
 		name:            extensionName(extension.Name),
 		extension:       extension,
 		outputPath:      outputPath,
-		snapshotPath:    path.Join(outputPath, fmt.Sprintf(".%s.snapshot", extension.Name)),
-		fileTrackerPath: path.Join(outputPath, fileTrackerFileName),
+		snapshotPath:    filepath.Clean(path.Join(outputPath, fmt.Sprintf(".%s.snapshot", extension.Name))),
+		fileTrackerPath: filepath.Clean(path.Join(outputPath, fileTrackerFileName)),
 	}
 }
 
@@ -266,11 +266,11 @@ func (c *extensionContext) ProcessDeletion(ctx context.Context) error {
 }
 
 func getResourceOverrideForResourceDirectory(basePath, groupDirName string, resourceDirName string) (*extensionv1.ResourceOverride, error) {
-	dirPath := path.Join(basePath, ResourcesDir, groupDirName, resourceDirName)
-	healthLua := path.Join(dirPath, "health.lua")
+	dirPath := filepath.Clean(path.Join(basePath, ResourcesDir, groupDirName, resourceDirName))
+	healthLua := filepath.Clean(path.Join(dirPath, "health.lua"))
 
 	healthScript := ""
-	rawScript, err := os.ReadFile(filepath.Clean(healthLua))
+	rawScript, err := os.ReadFile(filepath.Clean(filepath.Clean(healthLua)))
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func getResourceOverrideForResourceDirectory(basePath, groupDirName string, reso
 }
 
 func getResourceOverridesForGroupDirectory(basePath string, groupDirName string) (map[string]*extensionv1.ResourceOverride, error) {
-	dirPath := path.Join(basePath, ResourcesDir, groupDirName)
+	dirPath := filepath.Clean(path.Join(basePath, ResourcesDir, groupDirName))
 	resourceDirs, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -309,7 +309,7 @@ func getResourceOverridesForGroupDirectory(basePath string, groupDirName string)
 }
 
 func (c *extensionContext) getExtensionResourceOverrides() (map[string]*extensionv1.ResourceOverride, error) {
-	resourcesPath := path.Join(c.outputPath, ResourcesDir)
+	resourcesPath := filepath.Clean(path.Join(c.outputPath, ResourcesDir))
 	groupDirs, err := os.ReadDir(resourcesPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -351,7 +351,7 @@ func (c *extensionContext) walkFiles(tempDir string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		targetPath := filepath.Join(c.outputPath, relPath)
+		targetPath := filepath.Clean(filepath.Join(c.outputPath, relPath))
 		files = append(files, targetPath)
 		return nil
 	}); err != nil {
@@ -373,7 +373,7 @@ func (c *extensionContext) moveSourceFiles(tracker *fileTracker, revisions []str
 		if err != nil {
 			return err
 		}
-		targetPath := filepath.Join(c.outputPath, relPath)
+		targetPath := filepath.Clean(filepath.Join(c.outputPath, relPath))
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0750); err != nil {
 			return err
 		}
@@ -442,7 +442,7 @@ func (c *extensionContext) downloadTo(ctx context.Context, out string) error {
 			} else {
 				gitURL = fmt.Sprintf("git::%s%s//%s?ref=%s", parsedUrl.Host, parsedUrl.Path, baseDir, s.Git.Revision)
 			}
-			if err := getter.Get(filepath.Join(out, "resources"), gitURL); err != nil {
+			if err := getter.Get(filepath.Clean(filepath.Join(out, "resources")), gitURL); err != nil {
 				return err
 			}
 		case s.Web != nil:
